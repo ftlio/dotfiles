@@ -54,6 +54,8 @@ in
     # `jira`. Reads its API token from the system keyring (on macOS, the
     # Keychain; see jira-set-token), so it works from scripts and agents too.
     pkgs.jira-cli-go
+    # Reading .xlsx files (e.g. the security risk register) from scripts.
+    (pkgs.python3.withPackages (ps: [ ps.openpyxl ]))
     pkgs.claude-code
     pkgs.codex
     pkgs.claude-agent-acp
