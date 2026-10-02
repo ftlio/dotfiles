@@ -51,6 +51,9 @@ in
     pkgs.gopls
     pkgs.golangci-lint
     pkgs.templ
+    # `jira`. Reads its API token from the system keyring (on macOS, the
+    # Keychain; see jira-set-token), so it works from scripts and agents too.
+    pkgs.jira-cli-go
     pkgs.claude-code
     pkgs.codex
     pkgs.claude-agent-acp

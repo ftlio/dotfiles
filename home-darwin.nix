@@ -29,6 +29,20 @@ let
     echo "Stored (''${#key} characters)."
   '';
 
+  # Stores the Jira API token where jira-cli looks for it: a Keychain item
+  # with service "jira-cli" and the Jira login as the account.
+  jira-set-token = pkgs.writeShellScriptBin "jira-set-token" ''
+    config=''${JIRA_CONFIG_FILE:-$HOME/.config/.jira/.config.yml}
+    login=$(sed -n 's/^login: *//p' "$config" 2>/dev/null)
+    [ -n "$login" ] || read -r -p "Jira login email: " login
+    read -rs -p "Jira API token for $login: " token
+    echo
+    token=''${token//[[:space:]]/}
+    [ -n "$token" ] || { echo "jira-set-token: no token given" >&2; exit 1; }
+    /usr/bin/security add-generic-password -U -s jira-cli -a "$login" -w "$token"
+    echo "Stored (''${#token} characters) for $login."
+  '';
+
   # Rebuilds from the private flake that describes this machine, using the
   # local checkout of this repo instead of the revision pinned there.
   rebuild = pkgs.writeShellScriptBin "rebuild" ''
@@ -109,6 +123,7 @@ in
     pkgs.coreutils-prefixed
     claude-bedrock
     claude-bedrock-set-key
+    jira-set-token
     rebuild
   ];
 
