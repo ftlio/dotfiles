@@ -49,23 +49,55 @@ let
           (user-error "No Bedrock key in Keychain; run claude-bedrock-set-key"))
         (string-trim (buffer-string))))
 
-    (defun agent-backends-claude (backend)
-      "Make new agent-shell Claude sessions use BACKEND.
+    (defvar agent-shell-anthropic-claude-environment)
+
+    (defun agent-backends--environment (backend)
+      "Return the agent-shell Claude environment for BACKEND.
     BACKEND is the symbol `subscription' or `bedrock'."
+      (pcase backend
+        ('bedrock
+         (agent-shell-make-environment-variables
+          "CLAUDE_CODE_USE_BEDROCK" "1"
+          "AWS_REGION" "${bedrockRegion}"
+          "AWS_BEARER_TOKEN_BEDROCK" (agent-backends--bedrock-token)
+          :inherit-env t))
+        ('subscription nil)
+        (_ (user-error "Unknown backend: %s" backend))))
+
+    (defun agent-backends-claude (backend)
+      "Make new agent-shell Claude sessions use BACKEND by default.
+    BACKEND is the symbol `subscription' or `bedrock'.  Sessions started
+    with `agent-shell-claude-bedrock' or `agent-shell-claude-subscription'
+    ignore this."
       (interactive
        (list (intern (completing-read "Claude backend: "
                                       '("subscription" "bedrock") nil t))))
       (setq agent-shell-anthropic-claude-environment
-            (pcase backend
-              ('bedrock
-               (agent-shell-make-environment-variables
-                "CLAUDE_CODE_USE_BEDROCK" "1"
-                "AWS_REGION" "${bedrockRegion}"
-                "AWS_BEARER_TOKEN_BEDROCK" (agent-backends--bedrock-token)
-                :inherit-env t))
-              ('subscription nil)
-              (_ (user-error "Unknown backend: %s" backend))))
+            (agent-backends--environment backend))
       (message "agent-shell Claude backend: %s" backend))
+
+    (defun agent-backends--start (backend name)
+      "Start a Claude session on BACKEND, in a buffer named after NAME."
+      (require 'agent-shell)
+      (let ((environment (agent-backends--environment backend))
+            (config (copy-alist (agent-shell-anthropic-make-claude-code-config))))
+        (setf (alist-get :buffer-name config) name
+              (alist-get :mode-line-name config) name
+              (alist-get :client-maker config)
+              (lambda (buffer)
+                (let ((agent-shell-anthropic-claude-environment environment))
+                  (agent-shell-anthropic-make-claude-client :buffer buffer))))
+        (agent-shell-start :config config)))
+
+    (defun agent-shell-claude-bedrock ()
+      "Start a Claude session that uses Bedrock, whatever the default is."
+      (interactive)
+      (agent-backends--start 'bedrock "Claude Bedrock"))
+
+    (defun agent-shell-claude-subscription ()
+      "Start a Claude session that uses the subscription, whatever the default is."
+      (interactive)
+      (agent-backends--start 'subscription "Claude Subscription"))
 
     (provide 'agent-backends-bedrock)
     ;;; agent-backends-bedrock.el ends here
