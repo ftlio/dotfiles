@@ -19,7 +19,14 @@ let
 
   claude-bedrock-set-key = pkgs.writeShellScriptBin "claude-bedrock-set-key" ''
     # Prompts for the key (no echo) and creates or updates the Keychain item.
-    exec /usr/bin/security add-generic-password -U -a "$USER" -s ${keychainService} -w
+    # Read here rather than by `security -w`, whose own prompt silently cuts
+    # input off at 128 characters -- shorter than a Bedrock API key.
+    read -rs -p "Bedrock API key: " key
+    echo
+    key=''${key//[[:space:]]/}
+    [ -n "$key" ] || { echo "claude-bedrock-set-key: no key given" >&2; exit 1; }
+    /usr/bin/security add-generic-password -U -a "$USER" -s ${keychainService} -w "$key"
+    echo "Stored (''${#key} characters)."
   '';
 
   # Rebuilds from the private flake that describes this machine, using the
