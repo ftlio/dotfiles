@@ -49,6 +49,7 @@
 (require 'ftlio-nix-packages)
 (require 'ftlio-magit-packages)
 (require 'ftlio-docs-packages)
+(require 'ftlio-docker-packages)
 (require 'ftlio-ai-packages)
 
 ;;; Misc packages
@@ -115,6 +116,7 @@
 (require 'ftlio-nix-config)
 (require 'ftlio-magit-config)
 (require 'ftlio-docs-config)
+(require 'ftlio-docker-config)
 (require 'ftlio-ai-config)
 
 ;; Configure ef-themes
