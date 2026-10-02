@@ -4,7 +4,7 @@
 # a new machine needs before it can clone the private repo that describes it:
 #
 #   install.sh        run this on the new machine
-#   secrets.tar.gpg   GPG keys, the GitHub SSH key and the Bedrock key,
+#   secrets.tar.gpg   GPG keys, the SSH keys and the Bedrock key,
 #                     encrypted with a passphrase chosen here
 #
 # Usage: bootstrap/export.sh [output-dir]      (default: ~/dotfiles-bootstrap)
@@ -13,7 +13,7 @@ set -euo pipefail
 
 out=${1:-$HOME/dotfiles-bootstrap}
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-ssh_key=$HOME/.ssh/github_ftlio
+ssh_keys="github_ftlio id_ed25519"
 
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
@@ -23,9 +23,15 @@ echo "gpg: exporting secret keys and trust"
 gpg --export-secret-keys --armor > "$stage/gpg-secret-keys.asc"
 gpg --export-ownertrust > "$stage/gpg-ownertrust.txt"
 
-echo "ssh: copying $ssh_key"
 mkdir "$stage/ssh"
-cp "$ssh_key" "$ssh_key.pub" "$stage/ssh/"
+for key in $ssh_keys; do
+    if [[ -f $HOME/.ssh/$key ]]; then
+        echo "ssh: copying $key"
+        cp "$HOME/.ssh/$key" "$HOME/.ssh/$key.pub" "$stage/ssh/"
+    else
+        echo "ssh: no $key, skipping"
+    fi
+done
 
 # Optional: only present once claude-bedrock-set-key has been run.
 if /usr/bin/security find-generic-password -a "$USER" -s claude-bedrock -w \

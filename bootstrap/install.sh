@@ -66,13 +66,15 @@ echo "==> Decrypting the secrets bundle"
 # loopback: read the passphrase on this terminal; no pinentry is set up yet.
 with_tools gpg --quiet --pinentry-mode loopback --decrypt "$bundle" | tar -C "$stage" -xf -
 
-if [ ! -f "$ssh_key" ]; then
-    echo "==> Restoring the GitHub SSH key"
-    mkdir -p "$HOME/.ssh"
-    chmod 700 "$HOME/.ssh"
-    cp "$stage/ssh/github_ftlio" "$stage/ssh/github_ftlio.pub" "$HOME/.ssh/"
-    chmod 600 "$ssh_key"
-fi
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+for pub in "$stage"/ssh/*.pub; do
+    key=$(basename "$pub" .pub)
+    [ -f "$HOME/.ssh/$key" ] && continue
+    echo "==> Restoring SSH key $key"
+    cp "$stage/ssh/$key" "$pub" "$HOME/.ssh/"
+    chmod 600 "$HOME/.ssh/$key"
+done
 
 # ---------------------------------------------------------------------------
 # Clone and switch
@@ -124,8 +126,10 @@ if [ -f "$stage/bedrock-key" ]; then
         -w "$(cat "$stage/bedrock-key")"
 fi
 
-echo "==> Saving the SSH key passphrase in the Keychain"
-/usr/bin/ssh-add --apple-use-keychain "$ssh_key"
+echo "==> Saving the SSH key passphrases in the Keychain"
+for pub in "$stage"/ssh/*.pub; do
+    /usr/bin/ssh-add --apple-use-keychain "$HOME/.ssh/$(basename "$pub" .pub)"
+done
 
 cat <<'EOF'
 

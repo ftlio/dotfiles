@@ -148,16 +148,24 @@ in
     nix-direnv.enable = true;
   };
 
-  # On macOS, key passphrases come from the login Keychain. Store one once
+  # Two keys: github_ftlio for GitHub only, id_ed25519 for everything else
+  # (servers, other machines). IdentitiesOnly keeps ssh from offering a host
+  # every key in the agent.
+  #
+  # On macOS, key passphrases come from the login Keychain. Store each once
   # with:
-  #   ssh-add --apple-use-keychain ~/.ssh/github_ftlio
+  #   ssh-add --apple-use-keychain ~/.ssh/<key>
   # UseKeychain is an Apple extension; IgnoreUnknown lets any other ssh skip
   # it.
   home.file.".ssh/config".text = ''
+    Host github.com
+      IdentityFile ~/.ssh/github_ftlio
+
     Host *
       IgnoreUnknown UseKeychain
       UseKeychain yes
       AddKeysToAgent yes
-      IdentityFile ~/.ssh/github_ftlio
+      IdentitiesOnly yes
+      IdentityFile ~/.ssh/id_ed25519
   '';
 }
