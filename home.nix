@@ -110,6 +110,15 @@ in
       ".Trashes"
       ".ehthumbs.db"
       "Thumbs.db"
+      # Coding agents: instructions, local settings and scratch state.
+      # Ignored everywhere by default; a repo that shares them tracks them
+      # with `git add -f`, after which this no longer applies to them.
+      "CLAUDE.md"
+      "CLAUDE.local.md"
+      ".claude/"
+      "AGENTS.md"
+      "AGENTS.override.md"
+      ".codex/"
     ];
     settings = {
       user = {
