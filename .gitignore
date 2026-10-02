@@ -1,0 +1,7 @@
+# Editor backups
+*~
+\#*\#
+.\#*
+
+# nix build output
+result

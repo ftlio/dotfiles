@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#
+# macOS-only settings, sourced by .bashrc on Darwin.  Like .bashrc it is in
+# two halves: environment first, then interactive-only behind a guard.
+
+# ---------------------------------------------------------------------------
+# 1. Environment -- every shell
+# ---------------------------------------------------------------------------
+
+# Homebrew
+export PATH="/opt/homebrew/bin:$PATH"
+
+# ---------------------------------------------------------------------------
+# 2. Interactive only
+# ---------------------------------------------------------------------------
+
+case $- in
+  *i*) ;;
+    *) return;;
+esac
+
+# The system awk is the BSD one; prefer GNU awk, as on Linux.
+command -v gawk >/dev/null && alias awk="gawk"

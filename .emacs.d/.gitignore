@@ -1,0 +1,38 @@
+# Machine-local settings and secrets -- see ftlio/ftlio-defaults-config.el for
+# the portable preferences that are tracked.
+custom.el
+
+# Package manager and compiler output
+elpa/
+eln-cache/
+node_modules/
+package-lock.json
+tree-sitter/
+
+# Per-session state
+auto-save-list/
+agent/
+# agent-recall's transcript index -- holds a preview excerpt per transcript,
+# i.e. conversation content from work repos.  Never track it.
+agent-recall/
+# persp-mode autosaves perspectives (buffer lists, window configs) here once
+# agent-shell-hq-toggle switches it on.
+persp-confs/
+devdocs/
+history
+projects
+recentf
+tabsession.el
+transient/
+tramp
+url/
+.chatgpt-shell.el
+
+# Older layouts
+etc/
+var/
+
+# Editor backups (these have leaked credentials before)
+*~
+\#*\#
+.\#*
