@@ -13,9 +13,6 @@
 
 (add-to-list 'package-selected-packages 'gptel)
 (add-to-list 'package-selected-packages 'agent-shell)
-;; Search, browse and resume the transcripts agent-shell writes to
-;; <project>/.agent-shell/transcripts/.
-(add-to-list 'package-selected-packages 'agent-recall)
 
 ;; Needed by agent-shell-hq-peek.  The agent-shell-hq umbrella file declares
 ;; persp-mode but not posframe, so package-vc-install will not pull it in.

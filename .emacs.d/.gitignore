@@ -12,9 +12,6 @@ tree-sitter/
 # Per-session state
 auto-save-list/
 agent/
-# agent-recall's transcript index -- holds a preview excerpt per transcript,
-# i.e. conversation content from work repos.  Never track it.
-agent-recall/
 # persp-mode autosaves perspectives (buffer lists, window configs) here once
 # agent-shell-hq-toggle switches it on.
 persp-confs/

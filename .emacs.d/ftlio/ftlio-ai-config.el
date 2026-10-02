@@ -46,24 +46,6 @@
 ;; via :session-meta, so it is no longer needed; use C-c C-t
 ;; (`agent-shell-set-session-thought-level') to change effort per session.
 
-;;; agent-recall -- search, browse and resume agent-shell transcripts.
-
-;; `agent-recall-search-paths' -- the roots `agent-recall-reindex' scans for
-;; .agent-shell/transcripts/ directories -- is machine-specific and set in
-;; lisp/host-local.el.  Required: it defaults to nil and reindexing finds
-;; nothing.
-
-;; consult + vertico are already in use, so prefer the live-preview backend
-;; over the built-in grep one.
-(setopt agent-recall-search-function 'consult-ripgrep)
-
-;; Not installed by agent-recall itself.  Without it a transcript carries no
-;; session id, and resolving one falls back to matching timestamps against
-;; ~/.claude/projects/ -- which Claude prunes, so the link is lost once the
-;; session file goes.  The hook writes the id into the transcript header
-;; instead, which is durable and skips the expensive match on reindex.
-(add-hook 'agent-shell-mode-hook #'agent-recall-track-sessions)
-
 ;;; agent-shell-hq -- managing several shells at once.
 
 ;; Not in any archive, so it is tracked here for reproducibility; run
@@ -128,8 +110,8 @@ lowercase, no punctuation:\n\n%s")
 ;; keymap) during `persp-load-state-from-file', which runs from a timer at
 ;; startup and so breaks the session before you can intervene.  The saved names
 ;; also collide with real shells, pushing them to "(1)".  Sessions are resumed
-;; through agent-shell's picker or `agent-recall-resume', never by restoring a
-;; buffer, so there is nothing to lose here.
+;; through agent-shell's picker, never by restoring a buffer, so there is
+;; nothing to lose here.
 (with-eval-after-load 'persp-mode
   (add-to-list 'persp-filter-save-buffers-functions
                (lambda (buffer)
