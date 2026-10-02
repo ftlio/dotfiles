@@ -10,6 +10,13 @@
 # Homebrew
 export PATH="/opt/homebrew/bin:$PATH"
 
+# Docker runs in a colima VM.  The docker CLI finds it through its own
+# context; this is for tools that only look at DOCKER_HOST or the default
+# socket (testcontainers, SDKs).
+if command -v colima >/dev/null; then
+  export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
+fi
+
 # ---------------------------------------------------------------------------
 # 2. Interactive only
 # ---------------------------------------------------------------------------

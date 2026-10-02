@@ -121,11 +121,24 @@ in
   home.packages = [
     # GNU ls as `gls`, for dired (insert-directory-program in init.el).
     pkgs.coreutils-prefixed
+    # Containers: colima runs the Linux VM and Docker engine that Docker
+    # Desktop would otherwise provide; the rest is the standard client.
+    # Start it with `colima start` (see .bashrc.darwin for DOCKER_HOST).
+    pkgs.colima
+    pkgs.docker-client
     claude-bedrock
     claude-bedrock-set-key
     jira-set-token
     rebuild
   ];
+
+  # `docker compose` and `docker buildx` are CLI plugins, looked up here.
+  # Linked one by one because docker writes its own files (config.json, with
+  # registry logins) into ~/.docker.
+  home.file.".docker/cli-plugins/docker-compose".source =
+    "${pkgs.docker-compose}/libexec/docker/cli-plugins/docker-compose";
+  home.file.".docker/cli-plugins/docker-buildx".source =
+    "${pkgs.docker-buildx}/libexec/docker/cli-plugins/docker-buildx";
 
   # Loaded by agent-backends.el.
   home.file.".emacs.d/lisp/agent-backends-bedrock.el".source = agent-backends-bedrock-el;
