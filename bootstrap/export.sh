@@ -13,7 +13,6 @@ set -euo pipefail
 
 out=${1:-$HOME/dotfiles-bootstrap}
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-ssh_keys="github_ftlio id_ed25519 vbkey"
 
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
@@ -23,14 +22,13 @@ echo "gpg: exporting secret keys and trust"
 gpg --export-secret-keys --armor > "$stage/gpg-secret-keys.asc"
 gpg --export-ownertrust > "$stage/gpg-ownertrust.txt"
 
+# Every key pair in ~/.ssh: a private key with its .pub next to it.
 mkdir "$stage/ssh"
-for key in $ssh_keys; do
-    if [[ -f $HOME/.ssh/$key ]]; then
-        echo "ssh: copying $key"
-        cp "$HOME/.ssh/$key" "$HOME/.ssh/$key.pub" "$stage/ssh/"
-    else
-        echo "ssh: no $key, skipping"
-    fi
+for pub in "$HOME"/.ssh/*.pub; do
+    key=${pub%.pub}
+    [[ -f $key ]] || continue
+    echo "ssh: copying $(basename "$key")"
+    cp "$key" "$pub" "$stage/ssh/"
 done
 
 # Optional: only present once claude-bedrock-set-key has been run.
