@@ -25,4 +25,6 @@
   # dotfilesDir = "/Users/me/.dotfiles";          # checkout of this repo
   # privateDir = "/Users/me/.dotfiles-private";   # checkout of the private flake
   # emacsExtra = "";                              # elisp for lisp/host-local.el
+  # sshConfig = "";                               # ssh_config Host blocks, placed
+  #                                               # before the generic ones
 }

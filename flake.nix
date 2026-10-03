@@ -24,6 +24,7 @@
       dotfilesDir = "/Users/${h.user}/.dotfiles";
       privateDir = "/Users/${h.user}/.dotfiles-private";
       emacsExtra = "";
+      sshConfig = "";
     } // h // {
       git = { signingKey = null; identities = [ ]; } // h.git;
     };

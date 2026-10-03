@@ -158,6 +158,7 @@ in
   # UseKeychain is an Apple extension; IgnoreUnknown lets any other ssh skip
   # it.
   home.file.".ssh/config".text = ''
+    ${host.sshConfig}
     Host github.com
       IdentityFile ~/.ssh/github_ftlio
 
