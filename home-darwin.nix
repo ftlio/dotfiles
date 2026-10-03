@@ -153,6 +153,9 @@ in
   home.packages = [
     # GNU ls as `gls`, for dired (insert-directory-program in init.el).
     pkgs.coreutils-prefixed
+    # Saves a clipboard image to a file; agent-shell uses it to attach
+    # screenshots (agent-shell-send-clipboard-image).
+    pkgs.pngpaste
     # Containers: colima runs the Linux VM and Docker engine that Docker
     # Desktop would otherwise provide; the rest is the standard client.
     # Start it with `colima start` (see .bashrc.darwin for DOCKER_HOST).
