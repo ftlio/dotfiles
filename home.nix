@@ -108,6 +108,10 @@ in
 
   home.file.".tmux.conf".source = link ".tmux.conf";
 
+  # One set of machine-wide instructions for both coding agents.
+  home.file.".claude/CLAUDE.md".source = link "agents/global-instructions.md";
+  home.file.".codex/AGENTS.md".source = link "agents/global-instructions.md";
+
   # .bashrc is plain bash; nix only puts what it sources where it looks.
   # It picks up a platform file (.bashrc.darwin, from home-darwin.nix) itself.
   home.file.".bashrc".source = link ".bashrc";
