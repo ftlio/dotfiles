@@ -56,6 +56,9 @@ in
     pkgs.jira-cli-go
     # Reading .xlsx files (e.g. the security risk register) from scripts.
     (pkgs.python3.withPackages (ps: [ ps.openpyxl ]))
+    # Browser automation for agents, through MCP. Opens a visible Chromium
+    # with a fresh in-memory profile; registered with Claude and Codex below.
+    pkgs.playwright-mcp
     pkgs.claude-code
     pkgs.codex
     pkgs.claude-agent-acp
@@ -119,6 +122,9 @@ in
       "AGENTS.md"
       "AGENTS.override.md"
       ".codex/"
+      # Page snapshots and screenshots Playwright MCP saves in the working
+      # directory.
+      ".playwright-mcp/"
     ];
     settings = {
       user = {
@@ -168,5 +174,22 @@ in
       AddKeysToAgent yes
       IdentitiesOnly yes
       IdentityFile ~/.ssh/id_ed25519
+  '';
+
+  # Register MCP servers with Claude Code and Codex. Both keep their server
+  # lists in files they also write to themselves (~/.claude.json,
+  # ~/.codex/config.toml), so they are added through each CLI, only when
+  # missing, rather than by managing those files. The command is the stable
+  # profile path, so the registration outlives rebuilds.
+  home.activation.registerMcpServers = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    playwright=/etc/profiles/per-user/${config.home.username}/bin/playwright-mcp
+    if ! ${pkgs.claude-code}/bin/claude mcp get playwright >/dev/null 2>&1; then
+      run ${pkgs.claude-code}/bin/claude mcp add --scope user playwright -- "$playwright" ||
+        echo "warning: could not register playwright with Claude Code" >&2
+    fi
+    if ! ${pkgs.codex}/bin/codex mcp get playwright >/dev/null 2>&1; then
+      run ${pkgs.codex}/bin/codex mcp add playwright -- "$playwright" ||
+        echo "warning: could not register playwright with Codex" >&2
+    fi
   '';
 }
