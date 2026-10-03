@@ -13,7 +13,7 @@ set -euo pipefail
 
 out=${1:-$HOME/dotfiles-bootstrap}
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-ssh_keys="github_ftlio id_ed25519"
+ssh_keys="github_ftlio id_ed25519 vbkey"
 
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
