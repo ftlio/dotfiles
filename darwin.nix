@@ -42,6 +42,9 @@
     brews = [ "bash" ];
     casks = [
       "emacs-app"
+      # Database client. Its settings and connections are app data in
+      # ~/Library/DBeaverData, not managed here.
+      "dbeaver-community"
       # Firefox and Firefox Developer Edition were installed outside of brew.
       # To hand them over to brew, run once:
       #   brew install --cask --adopt firefox firefox@developer-edition
