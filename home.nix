@@ -15,8 +15,8 @@ let
     g.tree-sitter-templ
   ]);
 
-  # Playwright MCP, given the agent secrets this machine provides (see
-  # agent-secrets-dotenv in home-darwin.nix). Playwright types a secret's
+  # Playwright MCP, given the secrets this machine provides (see
+  # playwright-secrets-dotenv in home-darwin.nix). Playwright types a secret's
   # value wherever the agent types its name, and shows the name in place of
   # the value in what it reports back. That masking only matches the exact
   # value: if a page echoes it back escaped (a password containing " or \
@@ -24,9 +24,9 @@ let
   # convenience, not a security boundary. The dotenv file it loads at
   # startup is removed shortly after.
   playwright-mcp-agent = pkgs.writeShellScriptBin "playwright-mcp-agent" ''
-    secrets=/etc/profiles/per-user/$USER/bin/agent-secrets-dotenv
+    secrets=/etc/profiles/per-user/$USER/bin/playwright-secrets-dotenv
     if [ -x "$secrets" ]; then
-      file=$(mktemp "''${TMPDIR:-/tmp}/agent-secrets.XXXXXX")
+      file=$(mktemp "''${TMPDIR:-/tmp}/playwright-secrets.XXXXXX")
       chmod 600 "$file"
       "$secrets" > "$file"
       (sleep 30; rm -f "$file") >/dev/null 2>&1 &
