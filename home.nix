@@ -15,6 +15,26 @@ let
     g.tree-sitter-templ
   ]);
 
+  # Playwright MCP, given the agent secrets this machine provides (see
+  # agent-secrets-dotenv in home-darwin.nix). Playwright types a secret's
+  # value wherever the agent types its name, and shows the name in place of
+  # the value in what it reports back. That masking only matches the exact
+  # value: if a page echoes it back escaped (a password containing " or \
+  # read through JSON), the agent sees it. Playwright calls this a
+  # convenience, not a security boundary. The dotenv file it loads at
+  # startup is removed shortly after.
+  playwright-mcp-agent = pkgs.writeShellScriptBin "playwright-mcp-agent" ''
+    secrets=/etc/profiles/per-user/$USER/bin/agent-secrets-dotenv
+    if [ -x "$secrets" ]; then
+      file=$(mktemp "''${TMPDIR:-/tmp}/agent-secrets.XXXXXX")
+      chmod 600 "$file"
+      "$secrets" > "$file"
+      (sleep 30; rm -f "$file") >/dev/null 2>&1 &
+      exec ${pkgs.playwright-mcp}/bin/playwright-mcp --secrets "$file" "$@"
+    fi
+    exec ${pkgs.playwright-mcp}/bin/playwright-mcp "$@"
+  '';
+
   # Emacs is not always started from a shell (on macOS, the Dock), so the
   # agent binaries are referenced by store path rather than found on PATH.
   agent-backends-el = pkgs.writeText "agent-backends.el" ''
@@ -58,7 +78,7 @@ in
     (pkgs.python3.withPackages (ps: [ ps.openpyxl ]))
     # Browser automation for agents, through MCP. Opens a visible Chromium
     # with a fresh in-memory profile; registered with Claude and Codex below.
-    pkgs.playwright-mcp
+    playwright-mcp-agent
     pkgs.claude-code
     pkgs.codex
     pkgs.claude-agent-acp
@@ -178,17 +198,22 @@ in
 
   # Register MCP servers with Claude Code and Codex. Both keep their server
   # lists in files they also write to themselves (~/.claude.json,
-  # ~/.codex/config.toml), so they are added through each CLI, only when
-  # missing, rather than by managing those files. The command is the stable
-  # profile path, so the registration outlives rebuilds.
+  # ~/.codex/config.toml), so they are added through each CLI rather than by
+  # managing those files: only when missing, or when registered with a
+  # different command. The command is the stable profile path, so the
+  # registration outlives rebuilds.
   home.activation.registerMcpServers = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    playwright=/etc/profiles/per-user/${config.home.username}/bin/playwright-mcp
-    if ! ${pkgs.claude-code}/bin/claude mcp get playwright >/dev/null 2>&1; then
-      run ${pkgs.claude-code}/bin/claude mcp add --scope user playwright -- "$playwright" ||
+    playwright=/etc/profiles/per-user/${config.home.username}/bin/playwright-mcp-agent
+    claude=${pkgs.claude-code}/bin/claude
+    codex=${pkgs.codex}/bin/codex
+    if ! "$claude" mcp get playwright 2>/dev/null | grep -qF "$playwright"; then
+      "$claude" mcp remove --scope user playwright >/dev/null 2>&1 || true
+      run "$claude" mcp add --scope user playwright -- "$playwright" ||
         echo "warning: could not register playwright with Claude Code" >&2
     fi
-    if ! ${pkgs.codex}/bin/codex mcp get playwright >/dev/null 2>&1; then
-      run ${pkgs.codex}/bin/codex mcp add playwright -- "$playwright" ||
+    if ! "$codex" mcp get playwright 2>/dev/null | grep -qF "$playwright"; then
+      "$codex" mcp remove playwright >/dev/null 2>&1 || true
+      run "$codex" mcp add playwright -- "$playwright" ||
         echo "warning: could not register playwright with Codex" >&2
     fi
   '';

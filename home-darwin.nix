@@ -43,6 +43,36 @@ let
     echo "Stored (''${#token} characters) for $login."
   '';
 
+  # Secrets for agents, kept in the Keychain under the service
+  # "agent-secret", one item per name (the account field holds the name).
+  agentSecretService = "agent-secret";
+
+  agent-secret-set = pkgs.writeShellScriptBin "agent-secret-set" ''
+    # Usage: agent-secret-set NAME   (prompts for the value, no echo)
+    name=''${1:?usage: agent-secret-set NAME}
+    case $name in *[!A-Za-z0-9_]*) echo "agent-secret-set: use letters, digits and _ only" >&2; exit 1 ;; esac
+    read -rs -p "Value for $name: " value
+    echo
+    [ -n "$value" ] || { echo "agent-secret-set: no value given" >&2; exit 1; }
+    /usr/bin/security add-generic-password -U -s ${agentSecretService} -a "$name" -w "$value"
+    echo "Stored $name (''${#value} characters)."
+  '';
+
+  # Names only; values never printed.
+  agent-secret-list = pkgs.writeShellScriptBin "agent-secret-list" ''
+    /usr/bin/security dump-keychain 2>/dev/null |
+      ${pkgs.gawk}/bin/awk '
+        /^keychain:/ { acct = ""; svc = "" }
+        /"acct"<blob>=/ { sub(/.*"acct"<blob>="/, ""); sub(/"$/, ""); acct = $0 }
+        /"svce"<blob>=/ { sub(/.*"svce"<blob>="/, ""); sub(/"$/, ""); svc = $0 }
+        /^attributes:/ { acct = ""; svc = "" }
+        svc == "${agentSecretService}" && acct != "" { print acct; acct = ""; svc = "" }
+      ' | sort -u
+  '';
+
+  agent-secrets-dotenv = pkgs.writeShellScriptBin "agent-secrets-dotenv"
+    (builtins.readFile ./scripts/agent-secrets-dotenv.sh);
+
   # Rebuilds from the private flake that describes this machine, using the
   # local checkout of this repo instead of the revision pinned there.
   rebuild = pkgs.writeShellScriptBin "rebuild" ''
@@ -129,6 +159,9 @@ in
     claude-bedrock
     claude-bedrock-set-key
     jira-set-token
+    agent-secret-set
+    agent-secret-list
+    agent-secrets-dotenv
     rebuild
   ];
 
