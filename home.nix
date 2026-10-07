@@ -63,6 +63,8 @@ in
     pkgs.gawk
     pkgs.ripgrep
     pkgs.nixpkgs-fmt
+    # Plain TCP port forwarding, e.g. a local port to a database on a VPN.
+    pkgs.socat
     pkgs.tmux
     # Markdown rendering for crafted-writing-config.
     pkgs.pandoc
