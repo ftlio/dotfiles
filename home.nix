@@ -60,6 +60,7 @@ in
 
   home.packages = [
     pkgs.gh
+    pkgs.awscli2
     pkgs.gawk
     pkgs.ripgrep
     pkgs.nixpkgs-fmt
