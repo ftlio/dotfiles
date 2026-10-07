@@ -111,6 +111,13 @@ in
 
   home.file.".tmux.conf".source = link ".tmux.conf";
 
+  # AWS CLI profiles and SSO sessions, from the host description. Managed
+  # only when given; `aws sso login` keeps its tokens in ~/.aws/sso, so a
+  # read-only config is fine, but `aws configure` can no longer edit it.
+  home.file.".aws/config" = lib.mkIf (host.awsConfig != "") {
+    text = host.awsConfig;
+  };
+
   # One set of machine-wide instructions for both coding agents.
   home.file.".claude/CLAUDE.md".source = link "agents/global-instructions.md";
   home.file.".codex/AGENTS.md".source = link "agents/global-instructions.md";

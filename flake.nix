@@ -25,6 +25,7 @@
       privateDir = "/Users/${h.user}/.dotfiles-private";
       emacsExtra = "";
       sshConfig = "";
+      awsConfig = "";
     } // h // {
       git = { signingKey = null; identities = [ ]; } // h.git;
     };

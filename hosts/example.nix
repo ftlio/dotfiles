@@ -27,4 +27,6 @@
   # emacsExtra = "";                              # elisp for lisp/host-local.el
   # sshConfig = "";                               # ssh_config Host blocks, placed
   #                                               # before the generic ones
+  # awsConfig = "";                               # ~/.aws/config (profiles, SSO
+  #                                               # sessions); unmanaged if empty
 }
