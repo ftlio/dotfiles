@@ -56,7 +56,7 @@ case $- in
     *) return;;
 esac
 
-# ble.sh -- attached at the end of this file, after oh-my-bash has loaded.
+# ble.sh -- attached at the very end of this file, after everything else.
 [[ -f "$HOME/.local/share/blesh/ble.sh" ]] &&
   source "$HOME/.local/share/blesh/ble.sh" --noattach
 
@@ -166,13 +166,15 @@ plugins=(
 
 source "$OSH"/oh-my-bash.sh
 
-# ble.sh does not load without a terminal, hence the guard.
-if [[ ${BLE_VERSION-} ]]; then
-  ble-attach
-  bleopt complete_menu_style=align-nowrap
-fi
-
 command -v direnv >/dev/null && eval "$(direnv hook bash)"
 
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# Keep this last.  Attaching takes over PROMPT_COMMAND, and a hook added to
+# it afterwards (direnv's) never runs.  ble.sh does not load without a
+# terminal, hence the guard.
+if [[ ${BLE_VERSION-} ]]; then
+  ble-attach
+  bleopt complete_menu_style=align-nowrap
+fi
