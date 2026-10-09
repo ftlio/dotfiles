@@ -186,6 +186,8 @@ in
   programs.direnv = {
     enable = true;
     nix-direnv.enable = true;
+    # Drop the "direnv: export +AR +AS ..." line printed on every load.
+    config.global.hide_env_diff = true;
   };
 
   # Two keys: github_ftlio for GitHub only, id_ed25519 for everything else
