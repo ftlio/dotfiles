@@ -81,6 +81,11 @@ let
   # Rebuilds from the private flake that describes this machine, using the
   # local checkout of this repo instead of the revision pinned there.
   rebuild = pkgs.writeShellScriptBin "rebuild" ''
+    # darwin-rebuild runs as root, which has no GitHub key, so private inputs
+    # (git+ssh) are fetched first as this user; root then finds them in the
+    # store by their locked hash.
+    nix flake archive ${host.privateDir} \
+      --override-input dotfiles ${host.dotfilesDir} >/dev/null || exit
     exec sudo darwin-rebuild switch --flake ${host.privateDir} \
       --override-input dotfiles ${host.dotfilesDir} "$@"
   '';

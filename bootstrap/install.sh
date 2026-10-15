@@ -76,6 +76,14 @@ for pub in "$stage"/ssh/*.pub; do
     chmod 600 "$HOME/.ssh/$key"
 done
 
+# One passphrase prompt for the run: the clone and the input fetch below both
+# use the key through this agent.
+eval "$(/usr/bin/ssh-agent -s)" >/dev/null
+trap 'rm -rf "$stage"; /usr/bin/ssh-agent -k >/dev/null' EXIT
+echo "==> Unlocking $ssh_key (asks for its passphrase)"
+/usr/bin/ssh-add "$ssh_key"
+github_ssh="/usr/bin/ssh -i $ssh_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
 # ---------------------------------------------------------------------------
 # Clone and switch
 # ---------------------------------------------------------------------------
@@ -86,10 +94,16 @@ if [ ! -d "$dotfiles/.git" ]; then
 fi
 
 if [ ! -d "$private/.git" ]; then
-    echo "==> Cloning $private_repo (asks for the SSH key passphrase)"
-    GIT_SSH_COMMAND="/usr/bin/ssh -i $ssh_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
-        with_tools git clone "$private_repo" "$private"
+    echo "==> Cloning $private_repo"
+    GIT_SSH_COMMAND="$github_ssh" with_tools git clone "$private_repo" "$private"
 fi
+
+# The switch runs as root, which has no GitHub key, so private inputs (git+ssh,
+# e.g. fennel) are fetched here as this user. Root then finds them in the store
+# by their locked hash and doesn't fetch. `rebuild' does the same.
+echo "==> Fetching the flake's inputs"
+GIT_SSH_COMMAND="$github_ssh" nix --extra-experimental-features 'nix-command flakes' \
+    flake archive "$private" --override-input dotfiles "$dotfiles" >/dev/null
 
 echo "==> Switching to $config"
 # Build against the checkout just cloned rather than the revision the private
