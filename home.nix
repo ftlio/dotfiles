@@ -35,6 +35,21 @@ let
     exec ${pkgs.playwright-mcp}/bin/playwright-mcp "$@"
   '';
 
+  # Claude Code profiles. Each subscription login belongs to a config
+  # directory (Claude Code keys its Keychain item by CLAUDE_CONFIG_DIR), so
+  # two accounts can be signed in at once:
+  #   claude           ~/.claude, the default; the work account
+  #   claude-personal  ~/.claude-personal; the personal account
+  #   claude-bedrock   ~/.claude, billed to Bedrock (home-darwin.nix)
+  # Plain `claude` is not wrapped, so anything that runs it without asking
+  # (editors, scripts) gets the work account.
+  claudePersonalDir = "${config.home.homeDirectory}/.claude-personal";
+
+  claude-personal = pkgs.writeShellScriptBin "claude-personal" ''
+    export CLAUDE_CONFIG_DIR=${claudePersonalDir}
+    exec ${pkgs.claude-code}/bin/claude "$@"
+  '';
+
   # Emacs is not always started from a shell (on macOS, the Dock), so the
   # agent binaries are referenced by store path rather than found on PATH.
   agent-backends-el = pkgs.writeText "agent-backends.el" ''
@@ -46,10 +61,73 @@ let
             agent-shell-openai-codex-acp-command
             '("${pkgs.codex-acp}/bin/codex-acp")))
 
-    ;; The Bedrock switch needs somewhere to keep the API key, which is
-    ;; platform-specific, so it is only generated where one is set up.
+    ;; Bedrock needs somewhere to keep the API key, which is platform-specific,
+    ;; so its part is only generated where one is set up.  It defines
+    ;; `agent-backends--bedrock-environment'.
     (load (expand-file-name "lisp/agent-backends-bedrock" user-emacs-directory)
           :noerror)
+
+    (defvar agent-shell-anthropic-claude-environment)
+
+    (defconst agent-backends-claude-profiles '("work" "personal" "bedrock")
+      "Claude profiles, as for the claude, claude-personal and claude-bedrock commands.")
+
+    (defun agent-backends--environment (profile)
+      "Return the agent-shell Claude environment for PROFILE.
+    PROFILE is the symbol `work' (~/.claude, the default), `personal'
+    (~/.claude-personal) or `bedrock'."
+      (require 'agent-shell)
+      (pcase profile
+        ('work nil)
+        ('personal
+         (agent-shell-make-environment-variables
+          "CLAUDE_CONFIG_DIR" "${claudePersonalDir}"
+          :inherit-env t))
+        ('bedrock
+         (if (fboundp 'agent-backends--bedrock-environment)
+             (agent-backends--bedrock-environment)
+           (user-error "Bedrock is not set up on this machine")))
+        (_ (user-error "Unknown Claude profile: %s" profile))))
+
+    (defun agent-backends-claude (profile)
+      "Make new agent-shell Claude sessions use PROFILE by default.
+    PROFILE is the symbol `work', `personal' or `bedrock'.  Sessions started
+    with `agent-shell-claude-work', `agent-shell-claude-personal' or
+    `agent-shell-claude-bedrock' ignore this."
+      (interactive
+       (list (intern (completing-read "Claude profile: "
+                                      agent-backends-claude-profiles nil t))))
+      (setq agent-shell-anthropic-claude-environment
+            (agent-backends--environment profile))
+      (message "agent-shell Claude profile: %s" profile))
+
+    (defun agent-backends--start (profile name)
+      "Start a Claude session with PROFILE, in a buffer named after NAME."
+      (require 'agent-shell)
+      (let ((environment (agent-backends--environment profile))
+            (config (copy-alist (agent-shell-anthropic-make-claude-code-config))))
+        (setf (alist-get :buffer-name config) name
+              (alist-get :mode-line-name config) name
+              (alist-get :client-maker config)
+              (lambda (buffer)
+                (let ((agent-shell-anthropic-claude-environment environment))
+                  (agent-shell-anthropic-make-claude-client :buffer buffer))))
+        (agent-shell-start :config config)))
+
+    (defun agent-shell-claude-work ()
+      "Start a Claude session on the work account, whatever the default is."
+      (interactive)
+      (agent-backends--start 'work "Claude Work"))
+
+    (defun agent-shell-claude-personal ()
+      "Start a Claude session on the personal account, whatever the default is."
+      (interactive)
+      (agent-backends--start 'personal "Claude Personal"))
+
+    (defun agent-shell-claude-bedrock ()
+      "Start a Claude session that uses Bedrock, whatever the default is."
+      (interactive)
+      (agent-backends--start 'bedrock "Claude Bedrock"))
 
     (provide 'agent-backends)
     ;;; agent-backends.el ends here
@@ -85,6 +163,7 @@ in
     # with a fresh in-memory profile; registered with Claude and Codex below.
     playwright-mcp-agent
     pkgs.claude-code
+    claude-personal
     pkgs.codex
     pkgs.claude-agent-acp
     pkgs.codex-acp
@@ -122,6 +201,7 @@ in
 
   # One set of machine-wide instructions for both coding agents.
   home.file.".claude/CLAUDE.md".source = link "agents/global-instructions.md";
+  home.file.".claude-personal/CLAUDE.md".source = link "agents/global-instructions.md";
   home.file.".codex/AGENTS.md".source = link "agents/global-instructions.md";
 
   # .bashrc is plain bash; nix only puts what it sources where it looks.
@@ -152,9 +232,11 @@ in
       # Coding agents: instructions, local settings and scratch state.
       # Ignored everywhere by default; a repo that shares them tracks them
       # with `git add -f`, after which this no longer applies to them.
+      # .claude/ itself is left trackable, as Claude Code intends: shared
+      # settings, skills and agents go in the repo, personal settings don't.
       "CLAUDE.md"
       "CLAUDE.local.md"
-      ".claude/"
+      ".claude/settings.local.json"
       "AGENTS.md"
       "AGENTS.override.md"
       ".codex/"
@@ -220,15 +302,27 @@ in
   # managing those files: only when missing, or when registered with a
   # different command. The command is the stable profile path, so the
   # registration outlives rebuilds.
+  #
+  # Claude Code is registered once per profile. The default profile is
+  # reached with CLAUDE_CONFIG_DIR unset, not set to ~/.claude: setting it
+  # moves ~/.claude.json and the Keychain item, and would look like a
+  # different, signed-out profile.
   home.activation.registerMcpServers = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     playwright=/etc/profiles/per-user/${config.home.username}/bin/playwright-mcp-agent
     claude=${pkgs.claude-code}/bin/claude
     codex=${pkgs.codex}/bin/codex
-    if ! "$claude" mcp get playwright 2>/dev/null | grep -qF "$playwright"; then
-      "$claude" mcp remove --scope user playwright >/dev/null 2>&1 || true
-      run "$claude" mcp add --scope user playwright -- "$playwright" ||
-        echo "warning: could not register playwright with Claude Code" >&2
-    fi
+    for profile in default personal; do
+      if [ $profile = default ]; then
+        profileClaude=(env -u CLAUDE_CONFIG_DIR "$claude")
+      else
+        profileClaude=(env CLAUDE_CONFIG_DIR=${claudePersonalDir} "$claude")
+      fi
+      if ! "''${profileClaude[@]}" mcp get playwright 2>/dev/null | grep -qF "$playwright"; then
+        "''${profileClaude[@]}" mcp remove --scope user playwright >/dev/null 2>&1 || true
+        run "''${profileClaude[@]}" mcp add --scope user playwright -- "$playwright" ||
+          echo "warning: could not register playwright with Claude Code ($profile profile)" >&2
+      fi
+    done
     if ! "$codex" mcp get playwright 2>/dev/null | grep -qF "$playwright"; then
       "$codex" mcp remove playwright >/dev/null 2>&1 || true
       run "$codex" mcp add playwright -- "$playwright" ||

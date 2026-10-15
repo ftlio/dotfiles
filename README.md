@@ -6,7 +6,8 @@ macOS configuration as a nix flake: [nix-darwin] for the system,
 - `darwin.nix`: system level. Homebrew casks, Touch ID for sudo, GitHub's ssh
   host keys.
 - `home.nix`: git with per-directory identities and commit signing, gpg,
-  direnv, the Claude and Codex CLIs, and whatever the plain config files below
+  direnv, the Claude and Codex CLIs (with `claude-personal`, a second Claude
+  login kept in `~/.claude-personal`), and whatever the plain config files below
   depend on (oh-my-bash, ble.sh, Crafted Emacs, tree-sitter grammars, language
   tooling). `home-darwin.nix` adds the macOS-only parts: Keychain-backed
   Bedrock access for Claude, the passphrase dialog for gpg, and `rebuild`.
