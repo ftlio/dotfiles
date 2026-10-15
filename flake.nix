@@ -26,6 +26,9 @@
       emacsExtra = "";
       sshConfig = "";
       awsConfig = "";
+      # nix-darwin modules from other flakes, for this host only (e.g. a
+      # service a project provides). Appended after the shared modules.
+      extraModules = [ ];
     } // h // {
       git = { signingKey = null; identities = [ ]; } // h.git;
     };
@@ -46,9 +49,10 @@
             home-manager.users.${host.user}.imports = [
               ./home.nix
               ./home-darwin.nix
+              ./home-remote-sudo.nix
             ];
           }
-        ];
+        ] ++ host.extraModules;
       };
   in
   {

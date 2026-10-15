@@ -29,4 +29,8 @@
   #                                               # before the generic ones
   # awsConfig = "";                               # ~/.aws/config (profiles, SSO
   #                                               # sessions); unmanaged if empty
+  # extraModules = [ ];                           # nix-darwin modules for this
+  #                                               # host only, e.g. a service
+  #                                               # from another flake's
+  #                                               # darwinModules
 }
