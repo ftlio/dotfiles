@@ -77,6 +77,8 @@ in
     # `jira`. Reads its API token from the system keyring (on macOS, the
     # Keychain; see jira-set-token), so it works from scripts and agents too.
     pkgs.jira-cli-go
+    # `databricks`: Databricks CLI (bundles, auth, SQL via the statement API).
+    pkgs.databricks-cli
     # Reading .xlsx files (e.g. the security risk register) from scripts.
     (pkgs.python3.withPackages (ps: [ ps.openpyxl ]))
     # Browser automation for agents, through MCP. Opens a visible Chromium
