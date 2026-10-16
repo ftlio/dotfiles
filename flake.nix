@@ -26,6 +26,8 @@
       emacsExtra = "";
       sshConfig = "";
       awsConfig = "";
+      # Database connections for DBeaver; see home-databases.nix.
+      databases = { };
       # nix-darwin modules from other flakes, for this host only (e.g. a
       # service a project provides). Appended after the shared modules.
       extraModules = [ ];
@@ -50,6 +52,7 @@
               ./home.nix
               ./home-darwin.nix
               ./home-remote-sudo.nix
+              ./home-databases.nix
             ];
           }
         ] ++ host.extraModules;

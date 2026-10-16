@@ -39,3 +39,51 @@ named secrets. You never see their values, and you don't need to.
   conversation.
 - Secrets are loaded when the browser tool starts, so newly added ones need
   a new session.
+
+## Databases are reachable by name with `db`
+
+The databases this machine knows about are described in the private
+dotfiles, and `db` reaches them by name; the same descriptions are in
+`~/.config/databases.json`. Passwords stay in the Keychain and `db` hands
+them to the client, so you never need to see them.
+
+- `db list` shows each database's name, env (`local`, `dev` or `prod`),
+  driver and address; `db show NAME` gives one as JSON.
+- `db run NAME [ARG...]` opens its client (mysql, psql or sqlite3), with the
+  ARGs passed on, e.g. `db run NAME -e 'select ...'`.
+- `db exec NAME -- CMD` runs CMD (a test suite, a script) with `DB_HOST`,
+  `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE` and `DB_URL` set. Don't
+  print those values.
+- Databases that go through an ssh tunnel have it started for them. If that
+  fails, the user probably needs to be on that site's VPN.
+- `prod` databases are live. `db run` opens them read-only and `db exec`
+  refuses them. Don't pass `--write` to a `prod` database unless the user
+  has asked for that specific change. Prefer `local`, then `dev`, for
+  anything that writes.
+
+## Sessions run in Emacs agent-shell
+
+The user usually runs agents inside Emacs with agent-shell, often several at
+once across projects; `agent-shell-hq` lists them and groups them by project.
+This means each project keeps a record of its sessions:
+
+- `<project-dir>/.agent-shell/transcripts/<start-time>.md` holds one Markdown
+  transcript per session, named by when it started (e.g.
+  `2026-10-15-10-32-49.md`). The header gives the agent, start time, working
+  directory and session ID, and the rest is every prompt and every tool call
+  with its output.
+- `<project-dir>/.agent-shell/screenshots/` holds images the user pasted
+  into a session.
+
+When the user asks about another session ("was that in a different
+buffer?", "what did the other agent decide?"), search the transcripts in the
+relevant project directories rather than guessing. They can be several MB,
+so grep for keywords and read only the matching part rather than loading
+the whole file. For a Claude session, the session ID in the header is also
+the name of its log under `~/.claude/projects/<project-slug>/`.
+
+Transcripts record command output verbatim, including any credentials that
+appeared in it. Don't quote secret values from them, and keep `.agent-shell/`
+out of commits and out of scanner inputs. In vertebrai it is excluded through
+`.git/info/exclude`, so check that a project ignores it before you assume it
+does.
