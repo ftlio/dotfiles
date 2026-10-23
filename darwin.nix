@@ -1,4 +1,4 @@
-{ pkgs, self, host, ... }:
+{ pkgs, lib, self, host, ... }:
 {
   # List packages installed in system profile. To search by name, run:
   # $ nix search nixpkgs wget
@@ -8,6 +8,25 @@
 
   # Necessary for using flakes on this system.
   nix.settings.experimental-features = "nix-command flakes";
+
+  # A Linux VM that builds aarch64-linux derivations here (a NixOS host's
+  # closure, pushed with `nixos-rebuild --target-host`; its VM tests, which run
+  # without KVM inside the builder and so slowly), for hosts that ask for it.
+  # The first switch fetches the builder's image; the VM then runs under
+  # launchd, idle until a build asks for linux.
+  nix.linux-builder = lib.mkIf host.linuxBuilder {
+    enable = true;
+    ephemeral = true;
+    maxJobs = 4;
+    supportedFeatures = [ "kvm" "benchmark" "big-parallel" "nixos-test" ];
+    config = {
+      virtualisation.cores = 6;
+      virtualisation.darwin-builder = {
+        diskSize = 40 * 1024;
+        memorySize = 8 * 1024;
+      };
+    };
+  };
 
   # claude-code is unfree.
   nixpkgs.config.allowUnfree = true;

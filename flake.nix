@@ -31,12 +31,17 @@
       # nix-darwin modules from other flakes, for this host only (e.g. a
       # service a project provides). Appended after the shared modules.
       extraModules = [ ];
+      # A Linux builder VM (nix.linux-builder), for a machine that builds
+      # NixOS systems and their VM tests to deploy them.
+      linuxBuilder = false;
     } // h // {
       git = { signingKey = null; identities = [ ]; } // h.git;
     };
 
-    mkHost = _hostname: h:
-      let host = hostDefaults h; in
+    mkHost = hostname: h:
+      # The attribute's name is the host's: `rebuild` selects it by that, not
+      # by the machine's LocalHostName, which an MDM may rename.
+      let host = hostDefaults h // { name = hostname; }; in
       nix-darwin.lib.darwinSystem {
         specialArgs = { inherit inputs self host; };
         modules = [

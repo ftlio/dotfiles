@@ -218,6 +218,10 @@ in
       "*~"
       "\\#*\\#"
       "/.emacs.desktop"
+
+    # Large files in some repos (fennel keeps honestnet seeds in LFS).
+
+    lfs.enable = true;
       "/.emacs.desktop.lock"
       ".tern-*"
       ".\\#*"

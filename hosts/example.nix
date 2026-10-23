@@ -55,4 +55,6 @@
   #                                               # host only, e.g. a service
   #                                               # from another flake's
   #                                               # darwinModules
+  # linuxBuilder = false;                         # a Linux builder VM (nix.linux-builder)
+  #                                               # for building NixOS systems to deploy
 }

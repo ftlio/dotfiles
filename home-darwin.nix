@@ -86,7 +86,7 @@ let
     # store by their locked hash.
     nix flake archive ${host.privateDir} \
       --override-input dotfiles ${host.dotfilesDir} >/dev/null || exit
-    exec sudo darwin-rebuild switch --flake ${host.privateDir} \
+    exec sudo darwin-rebuild switch --flake ${host.privateDir}#${host.name} \
       --override-input dotfiles ${host.dotfilesDir} "$@"
   '';
 
