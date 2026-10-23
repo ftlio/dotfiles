@@ -212,16 +212,16 @@ in
   home.file.".local/share/blesh".source = "${pkgs.blesh}/share/blesh";
 
   programs.git = {
+
+    # Large files in some repos (fennel keeps honestnet seeds in LFS).
+
+    lfs.enable = true;
     enable = true;
     ignores = [
       # Emacs
       "*~"
       "\\#*\\#"
       "/.emacs.desktop"
-
-    # Large files in some repos (fennel keeps honestnet seeds in LFS).
-
-    lfs.enable = true;
       "/.emacs.desktop.lock"
       ".tern-*"
       ".\\#*"
