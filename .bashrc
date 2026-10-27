@@ -171,6 +171,20 @@ command -v direnv >/dev/null && eval "$(direnv hook bash)"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
+# Inside Emacs vterm: vterm's own integration (clear, vterm_cmd, the buffer
+# title) plus a mark at the end of each prompt, which is how the buffer
+# follows `cd' and finds prompts.  vterm's script appends that mark to PS1
+# once, but the oh-my-bash theme rebuilds PS1 before every prompt, so a
+# prompt command puts it back -- registered with oh-my-bash so it runs after
+# the theme's.  Before ble-attach, like every PROMPT_COMMAND hook.
+if [[ $INSIDE_EMACS == vterm && -f ~/.emacs.d/lisp/vterm/etc/emacs-vterm-bash.sh ]]; then
+  source ~/.emacs.d/lisp/vterm/etc/emacs-vterm-bash.sh
+  _vterm_mark_prompt() {
+    [[ $PS1 == *vterm_prompt_end* ]] || PS1=$PS1'\[$(vterm_prompt_end)\]'
+  }
+  _omb_util_add_prompt_command _vterm_mark_prompt
+fi
+
 # Keep this last.  Attaching takes over PROMPT_COMMAND, and a hook added to
 # it afterwards (direnv's) never runs.  ble.sh does not load without a
 # terminal, hence the guard.

@@ -179,6 +179,12 @@ in
     ;;; host-local.el ends here
   '';
 
+  # vterm with its native module already compiled, so Emacs never has to
+  # build it (cmake, libvterm). Loaded by ftlio-term-config.el; bash finds
+  # its shell integration under etc/ (.bashrc).
+  home.file.".emacs.d/lisp/vterm".source =
+    "${pkgs.emacsPackages.vterm}/share/emacs/site-lisp/elpa/vterm-${pkgs.emacsPackages.vterm.version}";
+
   home.file.".emacs.d/early-init.el".source = emacsLink "early-init.el";
   home.file.".emacs.d/init.el".source = emacsLink "init.el";
   home.file.".emacs.d/ftlio".source = emacsLink "ftlio";

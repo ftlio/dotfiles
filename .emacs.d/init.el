@@ -123,6 +123,7 @@
 (require 'ftlio-docs-config)
 (require 'ftlio-docker-config)
 (require 'ftlio-ai-config)
+(require 'ftlio-term-config)
 
 ;; Configure ef-themes
 ;; Load first: since 2.0.0 the ef-themes derive from the modus-themes, and these
