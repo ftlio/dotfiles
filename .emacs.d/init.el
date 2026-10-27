@@ -5,8 +5,10 @@
 
 (server-start)
 
-;; Enable the debugger on error
-(setq debug-on-error t)
+;; The debugger stays off: with it on, an error in a timer or process filter
+;; (agent-shell's, several times a second) stops Emacs in *Backtrace* until
+;; quit.  M-x toggle-debug-on-error when chasing one.
+(setq debug-on-error nil)
 
 ;;; Code:
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
@@ -70,6 +72,9 @@
         (delq 'corfu-terminal package-selected-packages)))
 
 (package-install-selected-packages :noconfirm)
+;; Packages from git rather than an archive (`package-vc-selected-packages',
+;; set by the -packages modules); only missing ones are installed.
+(package-vc-install-selected-packages)
 
 ;; Deferred: dired-mode-map only exists once dired is loaded.
 (with-eval-after-load 'dired

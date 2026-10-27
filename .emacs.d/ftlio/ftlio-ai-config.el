@@ -48,11 +48,7 @@
 
 ;;; agent-shell-hq -- managing several shells at once.
 
-;; Not in any archive, so it is tracked here for reproducibility; run
-;; M-x package-vc-install-selected-packages on a fresh machine.
-(setopt package-vc-selected-packages
-        '((agent-shell-hq . "https://github.com/SreenivasVRao/agent-shell-hq")))
-
+;; Installed from git; see ftlio-ai-packages.el.
 ;; Two of its three modules are useful here, and both entry points are
 ;; autoloaded, so nothing needs requiring at startup:
 ;;

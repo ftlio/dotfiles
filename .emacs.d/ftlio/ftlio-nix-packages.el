@@ -16,7 +16,7 @@
 (add-to-list 'package-selected-packages 'nix-ts-mode)
 (add-to-list 'package-selected-packages 'nix-update)
 (add-to-list 'package-selected-packages 'nixpkgs-fmt)
-(add-to-list 'package-selected-packages 'direnv)
+(add-to-list 'package-selected-packages 'envrc)
 
 (provide 'ftlio-nix-packages)
 ;;; ftlio-nix-packages.el ends here

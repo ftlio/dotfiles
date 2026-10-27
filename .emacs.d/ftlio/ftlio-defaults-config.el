@@ -25,6 +25,14 @@
 (setopt package-archive-priorities
         '(("gnu" . 99) ("nongnu" . 80) ("stable" . 70) ("melpa" . 0)))
 
+;;;; Memory and processes
+;; The default 800 KB threshold collects every few hundred KB of allocation,
+;; and each collection walks the whole heap; with several agent shells
+;; streaming that was thousands of pauses a day.  Bigger reads from process
+;; pipes (default 64 KB) mean fewer filter calls on agent-shell's JSON.
+(setq gc-cons-threshold (* 64 1024 1024)
+      read-process-output-max (* 1024 1024))
+
 ;;;; General editing
 (setopt fill-column 110
         tab-width 2

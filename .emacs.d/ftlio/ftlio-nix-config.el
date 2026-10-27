@@ -6,16 +6,19 @@
 
 ;;; Commentary:
 
-;; Nix config. Works best with emacs direnv package when working with flakes
-;; for dependencies
+;; Nix config.  A project's `.envrc' (`use flake') reaches Emacs through envrc:
+;; each buffer loads its directory's environment once and keeps it.  The
+;; direnv package re-ran `direnv export' on every switch to a buffer in another
+;; directory, about a second each time into a flake project.  After changing
+;; an `.envrc', M-x envrc-reload in a buffer there.
 
 ;;; Code:
 
 (require 'crafted-ide-config)
 (require 'nix-ts-mode)
-(require 'direnv)
+(require 'envrc)
 
-(direnv-mode)
+(envrc-global-mode)
 
 (crafted-ide-configure-tree-sitter '(nix))
 (add-to-list 'auto-mode-alist '("\\.nix\\'" . nix-ts-mode))
