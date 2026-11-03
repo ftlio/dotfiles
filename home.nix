@@ -15,6 +15,19 @@ let
     g.tree-sitter-templ
   ]);
 
+  # Node 22 for the Node tools agent sessions run all day, until nixpkgs-unstable
+  # has nodejs_24 >= 24.22.1: the 24.21.0 they ship with has the Brotli
+  # decompression bug (CVE-2026-111497), fixed in 22.23.4. Drop this once
+  # `nix eval nixpkgs#nodejs_24.version` is past it. playwright-mcp's
+  # playwright-test dependency still references nodejs 24 for its own `bin`,
+  # which nothing here runs.
+  onNode22 = p: p.override {
+    buildNpmPackage = pkgs.buildNpmPackage.override { nodejs = pkgs.nodejs_22; };
+  };
+  claude-agent-acp = onNode22 pkgs.claude-agent-acp;
+  playwright-mcp = onNode22 pkgs.playwright-mcp;
+  codex-acp = onNode22 pkgs.codex-acp;
+
   # Playwright MCP, given the secrets this machine provides (see
   # playwright-secrets-dotenv in home-darwin.nix). Playwright types a secret's
   # value wherever the agent types its name, and shows the name in place of
@@ -30,9 +43,9 @@ let
       chmod 600 "$file"
       "$secrets" > "$file"
       (sleep 30; rm -f "$file") >/dev/null 2>&1 &
-      exec ${pkgs.playwright-mcp}/bin/playwright-mcp --secrets "$file" "$@"
+      exec ${playwright-mcp}/bin/playwright-mcp --secrets "$file" "$@"
     fi
-    exec ${pkgs.playwright-mcp}/bin/playwright-mcp "$@"
+    exec ${playwright-mcp}/bin/playwright-mcp "$@"
   '';
 
   # Claude Code profiles. Each subscription login belongs to a config
@@ -57,9 +70,9 @@ let
 
     (with-eval-after-load 'agent-shell
       (setq agent-shell-anthropic-claude-acp-command
-            '("${pkgs.claude-agent-acp}/bin/claude-agent-acp")
+            '("${claude-agent-acp}/bin/claude-agent-acp")
             agent-shell-openai-codex-acp-command
-            '("${pkgs.codex-acp}/bin/codex-acp")))
+            '("${codex-acp}/bin/codex-acp")))
 
     ;; Bedrock needs somewhere to keep the API key, which is platform-specific,
     ;; so its part is only generated where one is set up.  It defines
@@ -165,8 +178,8 @@ in
     pkgs.claude-code
     claude-personal
     pkgs.codex
-    pkgs.claude-agent-acp
-    pkgs.codex-acp
+    claude-agent-acp
+    codex-acp
   ];
 
   # Loaded by ftlio-ai-config.el.
