@@ -81,6 +81,12 @@ let
           :noerror)
 
     (defvar agent-shell-anthropic-claude-environment)
+    (defvar agent-shell-anthropic-default-session-mode-id)
+
+    (defconst agent-backends-claude-session-modes '((work . "auto"))
+      "Session mode a Claude profile's sessions start in, by profile.
+    A profile not listed starts in the agent's default mode.  The IDs are
+    those agent-shell lists under \"Available modes\".")
 
     (defconst agent-backends-claude-profiles '("work" "personal" "bedrock")
       "Claude profiles, as for the claude, claude-personal and claude-bedrock commands.")
@@ -111,7 +117,9 @@ let
        (list (intern (completing-read "Claude profile: "
                                       agent-backends-claude-profiles nil t))))
       (setq agent-shell-anthropic-claude-environment
-            (agent-backends--environment profile))
+            (agent-backends--environment profile)
+            agent-shell-anthropic-default-session-mode-id
+            (alist-get profile agent-backends-claude-session-modes))
       (message "agent-shell Claude profile: %s" profile))
 
     (defun agent-backends--start (profile name)
@@ -124,8 +132,17 @@ let
               (alist-get :client-maker config)
               (lambda (buffer)
                 (let ((agent-shell-anthropic-claude-environment environment))
-                  (agent-shell-anthropic-make-claude-client :buffer buffer))))
+                  (agent-shell-anthropic-make-claude-client :buffer buffer)))
+              (alist-get :default-session-mode-id config)
+              (let ((mode (alist-get profile agent-backends-claude-session-modes)))
+                (lambda () mode)))
         (agent-shell-start :config config)))
+
+    ;; Plain sessions use the default profile, work, until
+    ;; `agent-backends-claude' says otherwise.
+    (with-eval-after-load 'agent-shell-anthropic
+      (setq agent-shell-anthropic-default-session-mode-id
+            (alist-get 'work agent-backends-claude-session-modes)))
 
     (defun agent-shell-claude-work ()
       "Start a Claude session on the work account, whatever the default is."
