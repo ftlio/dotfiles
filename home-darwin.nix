@@ -46,6 +46,46 @@ let
     echo "Stored (''${#token} characters) for $login."
   '';
 
+  # PagerDuty REST API token, in the Keychain under the service "pagerduty".
+  # `pd-api` makes calls with it, so neither scripts nor agents see it.
+  pagerdutyService = "pagerduty";
+
+  pagerduty-set-token = pkgs.writeShellScriptBin "pagerduty-set-token" ''
+    read -rs -p "PagerDuty API token: " token
+    echo
+    token=''${token//[[:space:]]/}
+    [ -n "$token" ] || { echo "pagerduty-set-token: no token given" >&2; exit 1; }
+    /usr/bin/security add-generic-password -U -a "$USER" -s ${pagerdutyService} -w "$token"
+    echo "Stored (''${#token} characters)."
+  '';
+
+  # Usage: pd-api [--write] [METHOD] PATH [CURL-ARG...]
+  #   pd-api /incidents?statuses[]=triggered
+  #   pd-api --write PUT /incidents/ID -d @body.json
+  # Anything but GET needs --write. PAGERDUTY_API_HOST overrides the host
+  # (api.eu.pagerduty.com for an EU account).
+  pd-api = pkgs.writeShellScriptBin "pd-api" ''
+    write=
+    [ "$1" = --write ] && { write=1; shift; }
+    method=GET
+    case $1 in GET|POST|PUT|PATCH|DELETE) method=$1; shift ;; esac
+    path=''${1:?usage: pd-api [--write] [METHOD] PATH [CURL-ARG...]}
+    shift
+    if [ "$method" != GET ] && [ -z "$write" ]; then
+      echo "pd-api: $method changes PagerDuty; pass --write if that is intended" >&2
+      exit 1
+    fi
+    if ! token=$(/usr/bin/security find-generic-password -a "$USER" -s ${pagerdutyService} -w 2>/dev/null); then
+      echo "pd-api: no token in Keychain; run pagerduty-set-token first" >&2
+      exit 1
+    fi
+    exec ${pkgs.curl}/bin/curl -sS --fail-with-body -X "$method" \
+      -H "Authorization: Token token=$token" \
+      -H "Accept: application/vnd.pagerduty+json;version=2" \
+      -H "Content-Type: application/json" \
+      "https://''${PAGERDUTY_API_HOST:-api.pagerduty.com}/''${path#/}" "$@"
+  '';
+
   # Secrets for the Playwright browser (see playwright-mcp-agent in
   # home.nix), kept in the Keychain under the service "playwright-secret",
   # one item per name (the account field holds the name). Agents refer to
@@ -132,6 +172,8 @@ in
     claude-bedrock
     claude-bedrock-set-key
     jira-set-token
+    pagerduty-set-token
+    pd-api
     playwright-secret-set
     playwright-secret-list
     playwright-secrets-dotenv
