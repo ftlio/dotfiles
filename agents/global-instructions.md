@@ -87,3 +87,19 @@ appeared in it. Don't quote secret values from them, and keep `.agent-shell/`
 out of commits and out of scanner inputs. In vertebrai it is excluded through
 `.git/info/exclude`, so check that a project ignores it before you assume it
 does.
+
+## Worktrees go inside the repository
+
+Put a git worktree at `<repo>/.claude/worktrees/<name>`, never beside the
+repository (`../<repo>-<branch>`, `../wt-...`). That is where Claude Code's
+own worktree tool puts them, so every agent's worktrees for a project are in
+one place and `git worktree list` in the repository finds them. Name the
+directory after the branch or the task, without a repository prefix.
+
+- `git worktree add .claude/worktrees/<name> -b <branch>` from the
+  repository's root; Codex too, despite the directory's name.
+- The path is ignored by git everywhere (home.nix), so it never shows as
+  untracked.
+- When the work is merged or abandoned, remove it with
+  `git worktree remove .claude/worktrees/<name>` (and delete the branch if
+  it was only for that) rather than leaving it for the user to find.

@@ -247,6 +247,7 @@ in
       "CLAUDE.md"
       "CLAUDE.local.md"
       ".claude/settings.local.json"
+      ".claude/worktrees/"
       "AGENTS.md"
       "AGENTS.override.md"
       ".codex/"
