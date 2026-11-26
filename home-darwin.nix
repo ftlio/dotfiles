@@ -183,6 +183,28 @@ let
     fi
   '';
 
+  # `aws sso login` opening its sign-in page in the app named by
+  # AWS_LOGIN_BROWSER (e.g. Firefox), so one SSO session can live in a
+  # different browser from the default. The CLI ignores BROWSER, so this asks
+  # it for the URL (--no-browser) and opens that. Without the variable it is
+  # plain `aws sso login`. A project's .envrc sets the variable.
+  aws-sso-login = pkgs.writeShellScriptBin "aws-sso-login" ''
+    set -o pipefail
+    app=''${AWS_LOGIN_BROWSER:-}
+    [ -n "$app" ] || exec ${pkgs.awscli2}/bin/aws sso login "$@"
+    opened=
+    ${pkgs.awscli2}/bin/aws sso login --no-browser "$@" 2>&1 | while IFS= read -r line; do
+      printf '%s\n' "$line"
+      case $line in
+        https://*)
+          if [ -z "$opened" ]; then
+            /usr/bin/open -a "$app" "$line"
+            opened=1
+          fi ;;
+      esac
+    done
+  '';
+
   # Secrets for the Playwright browser (see playwright-mcp-agent in
   # home.nix), kept in the Keychain under the service "playwright-secret",
   # one item per name (the account field holds the name). Agents refer to
@@ -274,6 +296,7 @@ in
     foreman-set-token
     foreman-api
     foreman-login
+    aws-sso-login
     playwright-secret-set
     playwright-secret-list
     playwright-secrets-dotenv
