@@ -19,6 +19,35 @@ and home-manager flake in `~/.dotfiles`, with per-machine values in
   `.envrc` containing `use flake`. If a command a project expects is missing,
   run it as `direnv exec . <command>` or `nix develop -c <command>`.
 
+## Writing code
+
+- Change only what the task needs. Don't reformat, rename or refactor
+  nearby code; mention unrelated problems instead of fixing them. Small
+  diffs are easier for me to review.
+- Read the surrounding code first and follow its conventions. Reuse
+  existing helpers rather than writing new ones.
+- Write the simplest thing that works. No abstractions, options or
+  layers for needs that don't exist yet.
+- Let errors surface. Don't catch exceptions you can't handle or add
+  fallbacks and defaults that hide a failure; validate only at real
+  boundaries (user input, external APIs).
+- Write tests from what the code is supposed to do, not from how it
+  does it. Assert on behaviour a caller can see (return values, output,
+  state, errors) rather than on internal calls, private helpers or the
+  exact steps taken, and mock only at real boundaries (network, clock,
+  filesystem). Work out expected values from the requirement, not by
+  running the code and copying its output. A test that mirrors the
+  implementation passes when the code is wrong and breaks when it is
+  refactored correctly.
+- Before saying something is done, run the project's tests, type
+  checker and linter. Don't weaken a test or special-case code to make
+  it pass. If something fails or couldn't be run, say so plainly.
+- If a request is ambiguous or the approach seems wrong, ask or state
+  your assumption before writing a lot of code.
+- Comments explain why, not what. Don't leave comments narrating the
+  change, dead code, compatibility shims or TODOs.
+- Ask before adding a dependency.
+
 ## Logging in with the Playwright browser
 
 Credentials for web logins are available to the Playwright MCP browser as
