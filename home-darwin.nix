@@ -169,15 +169,17 @@ let
         path=''${path//'{client}'/$client} ;;
     esac
     set -- -sS --fail-with-body -X "$method" \
-      -H @<(printf 'Authorization: %s %s' "$scheme" "$token") \
       -H "Content-Type: application/json" \
       "https://''${FOREMAN_API_HOST:-api.foreman.mn}/api/v2/''${path#/}" "$@"
     # Keep the key out of argv (process substitution shows as /dev/fd/N in ps)
-    # and, in debug mode, out of the trace (sed redacts the header).
+    # and, in debug mode, out of the trace (sed redacts the header). The <(...)
+    # must be on the curl line itself: bash closes it when its command ends, so
+    # one made in `set --` is gone by the time curl opens it.
+    auth() { printf 'Authorization: %s %s' "$scheme" "$token"; }
     if [ -n "$debug" ]; then
-      ${pkgs.curl}/bin/curl -v "$@" 2> >(${pkgs.gnused}/bin/sed -E 's/(Authorization: (Token|Bearer) )[^ ]+/\1<redacted>/I' >&2)
+      ${pkgs.curl}/bin/curl -v -H @<(auth) "$@" 2> >(${pkgs.gnused}/bin/sed -E 's/(Authorization: (Token|Bearer) )[^ ]+/\1<redacted>/I' >&2)
     else
-      exec ${pkgs.curl}/bin/curl "$@"
+      exec ${pkgs.curl}/bin/curl -H @<(auth) "$@"
     fi
   '';
 
@@ -294,8 +296,11 @@ in
 
   # pinentry-mac asks for key passphrases in a dialog (and can save them in
   # the Keychain), so signing works from Emacs, where there is no terminal.
+  # The defaults (10 min idle, 2 h max) asked again for nearly every commit.
   services.gpg-agent = {
     enable = true;
     pinentry.package = pkgs.pinentry_mac;
+    defaultCacheTtl = 28800; # 8 h since the last use
+    maxCacheTtl = 86400; # 24 h at most
   };
 }
