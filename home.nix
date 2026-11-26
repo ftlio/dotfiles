@@ -300,6 +300,10 @@ in
     nix-direnv.enable = true;
     # Drop the "direnv: export +AR +AS ..." line printed on every load.
     config.global.hide_env_diff = true;
+    # Own projects: their .envrc files load without `direnv allow`, including
+    # after edits and pulls. Only for repos nobody else pushes to; anything
+    # cloned from elsewhere stays outside ~/ftlio and still needs approval.
+    config.whitelist.prefix = [ "${config.home.homeDirectory}/ftlio" ];
   };
 
   # Two keys: github_ftlio for GitHub only, id_ed25519 for everything else
