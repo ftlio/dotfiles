@@ -86,6 +86,101 @@ let
       "https://''${PAGERDUTY_API_HOST:-api.pagerduty.com}/''${path#/}" "$@"
   '';
 
+  # Foreman (foreman.mn) mining-fleet API. The API key is in the Keychain
+  # under the service "foreman"; the (non-secret) Client ID, which most paths
+  # need, under "foreman-client-id". `foreman-api` reads both at run time, so
+  # neither scripts nor agents see the key.
+  foremanService = "foreman";
+  foremanClientService = "foreman-client-id";
+  foremanSessionService = "foreman-session";
+
+  foreman-set-token = pkgs.writeShellScriptBin "foreman-set-token" ''
+    read -rs -p "Foreman API key: " token
+    echo
+    token=''${token//[[:space:]]/}
+    [ -n "$token" ] || { echo "foreman-set-token: no key given" >&2; exit 1; }
+    read -r -p "Foreman Client ID: " client
+    client=''${client//[[:space:]]/}
+    [ -n "$client" ] || { echo "foreman-set-token: no client ID given" >&2; exit 1; }
+    /usr/bin/security add-generic-password -U -a "$USER" -s ${foremanService} -w "$token"
+    /usr/bin/security add-generic-password -U -a "$USER" -s ${foremanClientService} -w "$client"
+    echo "Stored key (''${#token} characters) and Client ID $client."
+  '';
+
+  # Foreman logs in through SSO, so its browser session token can't be
+  # scripted. `foreman-login` opens a headed Chromium (throwaway profile, with
+  # Google background networking disabled), waits for you to complete SSO, and
+  # captures the bearer token the dashboard sends to foreman.mn, into the
+  # Keychain under "foreman-session". `foreman-api --bearer` then uses it. The
+  # profile is ephemeral, so you redo SSO each run. The Playwright browser and
+  # module come from nix by store path.
+  foreman-login = pkgs.writeShellScriptBin "foreman-login" ''
+    export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
+    export NODE_PATH=${pkgs.playwright-test}/lib/node_modules
+    exec ${pkgs.nodejs_22}/bin/node ${./scripts/foreman-login.cjs} "$@"
+  '';
+
+  # Usage: foreman-api [--write] [--bearer] [--debug] [METHOD] PATH [CURL-ARG...]
+  #   foreman-api /ping/{client}
+  #   foreman-api /clients/{client}/miners/summary
+  #   foreman-api /clients/{client}/miners/MINER_ID
+  # {client} in PATH is replaced by the stored Client ID. Anything but GET
+  # needs --write (this API is used read-only). FOREMAN_API_HOST overrides the
+  # host. --bearer uses the SSO session token from `foreman-login` (Keychain
+  # "foreman-session") with the Bearer scheme, instead of the provisioning key.
+  # --debug (or FOREMAN_DEBUG=1) traces the request with curl -v, with the
+  # Authorization header redacted from the trace.
+  foreman-api = pkgs.writeShellScriptBin "foreman-api" ''
+    write=
+    bearer=
+    debug=''${FOREMAN_DEBUG:+1}
+    while :; do
+      case $1 in
+        --write) write=1; shift ;;
+        --bearer) bearer=1; shift ;;
+        --debug) debug=1; shift ;;
+        *) break ;;
+      esac
+    done
+    method=GET
+    case $1 in GET|POST|PUT|PATCH|DELETE) method=$1; shift ;; esac
+    path=''${1:?usage: foreman-api [--write] [--bearer] [--debug] [METHOD] PATH [CURL-ARG...]}
+    shift
+    if [ "$method" != GET ] && [ -z "$write" ]; then
+      echo "foreman-api: $method changes Foreman; pass --write if that is intended" >&2
+      exit 1
+    fi
+    if [ -n "$bearer" ]; then
+      scheme=Bearer; keyService=${foremanSessionService}; setup="foreman-login"
+    else
+      scheme=Token; keyService=${foremanService}; setup="foreman-set-token"
+    fi
+    if ! token=$(/usr/bin/security find-generic-password -a "$USER" -s "$keyService" -w 2>/dev/null); then
+      echo "foreman-api: no token in Keychain ($keyService); run $setup first" >&2
+      exit 1
+    fi
+    # Substitute {client} in the path with the stored Client ID.
+    case $path in
+      *'{client}'*)
+        if ! client=$(/usr/bin/security find-generic-password -a "$USER" -s ${foremanClientService} -w 2>/dev/null); then
+          echo "foreman-api: no Client ID in Keychain; run foreman-set-token first" >&2
+          exit 1
+        fi
+        path=''${path//'{client}'/$client} ;;
+    esac
+    set -- -sS --fail-with-body -X "$method" \
+      -H @<(printf 'Authorization: %s %s' "$scheme" "$token") \
+      -H "Content-Type: application/json" \
+      "https://''${FOREMAN_API_HOST:-api.foreman.mn}/api/v2/''${path#/}" "$@"
+    # Keep the key out of argv (process substitution shows as /dev/fd/N in ps)
+    # and, in debug mode, out of the trace (sed redacts the header).
+    if [ -n "$debug" ]; then
+      ${pkgs.curl}/bin/curl -v "$@" 2> >(${pkgs.gnused}/bin/sed -E 's/(Authorization: (Token|Bearer) )[^ ]+/\1<redacted>/I' >&2)
+    else
+      exec ${pkgs.curl}/bin/curl "$@"
+    fi
+  '';
+
   # Secrets for the Playwright browser (see playwright-mcp-agent in
   # home.nix), kept in the Keychain under the service "playwright-secret",
   # one item per name (the account field holds the name). Agents refer to
@@ -174,6 +269,9 @@ in
     jira-set-token
     pagerduty-set-token
     pd-api
+    foreman-set-token
+    foreman-api
+    foreman-login
     playwright-secret-set
     playwright-secret-list
     playwright-secrets-dotenv
