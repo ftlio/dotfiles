@@ -183,14 +183,40 @@ let
     fi
   '';
 
-  # `aws sso login` opening its sign-in page in the app named by
-  # AWS_LOGIN_BROWSER (e.g. Firefox), so one SSO session can live in a
-  # different browser from the default. The CLI ignores BROWSER, so this asks
-  # it for the URL (--no-browser) and opens that. Without the variable it is
-  # plain `aws sso login`. A project's .envrc sets the variable.
+  # `aws sso login` opening its sign-in page in a chosen app, so one SSO
+  # session can live in a different browser from the default. The app is
+  # AWS_LOGIN_BROWSER if set, else the `login_browser` key of the session's
+  # [sso-session NAME] section in ~/.aws/config (the CLI ignores the key). The
+  # session is --sso-session's, or that of --profile / AWS_PROFILE. The CLI
+  # ignores BROWSER, so this asks it for the URL (--no-browser) and opens
+  # that. With no app found it is plain `aws sso login`.
   aws-sso-login = pkgs.writeShellScriptBin "aws-sso-login" ''
     set -o pipefail
+    config=''${AWS_CONFIG_FILE:-$HOME/.aws/config}
+    ini() { # SECTION KEY: a value from the config file, or nothing
+      ${pkgs.gawk}/bin/awk -v s="[$1]" -v k="$2" '
+        /^[[:space:]]*\[/ { in_s = ($0 == s) ; next }
+        in_s { split($0, kv, "="); key = kv[1]; gsub(/[[:space:]]/, "", key)
+               if (key == k) { v = substr($0, index($0, "=") + 1); gsub(/^[[:space:]]+|[[:space:]]+$/, "", v); print v; exit } }
+      ' "$config" 2>/dev/null
+    }
+    session= profile=''${AWS_PROFILE:-}
+    args=("$@")
+    for ((i = 0; i < ''${#args[@]}; i++)); do
+      case ''${args[i]} in
+        --sso-session) session=''${args[i+1]:-} ;;
+        --sso-session=*) session=''${args[i]#*=} ;;
+        --profile) profile=''${args[i+1]:-} ;;
+        --profile=*) profile=''${args[i]#*=} ;;
+      esac
+    done
+    if [ -z "$session" ] && [ -n "$profile" ]; then
+      section="profile $profile"
+      [ "$profile" = default ] && section=default
+      session=$(ini "$section" sso_session)
+    fi
     app=''${AWS_LOGIN_BROWSER:-}
+    [ -n "$app" ] || [ -z "$session" ] || app=$(ini "sso-session $session" login_browser)
     [ -n "$app" ] || exec ${pkgs.awscli2}/bin/aws sso login "$@"
     opened=
     ${pkgs.awscli2}/bin/aws sso login --no-browser "$@" 2>&1 | while IFS= read -r line; do
