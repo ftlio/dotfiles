@@ -90,6 +90,21 @@ them to the client, so you never need to see them.
   has asked for that specific change. Prefer `local`, then `dev`, for
   anything that writes.
 
+## Signing in to AWS is `aws-sso-login`
+
+AWS profiles and SSO sessions are in `~/.aws/config` (from the private
+dotfiles); each project's `.envrc` sets its `AWS_PROFILE`.
+
+- When an SSO token has expired, have the user run `aws-sso-login` (with
+  hyphens) with the same arguments as `aws sso login`, e.g.
+  `aws-sso-login --sso-session NAME`. It opens the sign-in page in the
+  browser the session's `login_browser` names, which may not be the default.
+  Plain `aws sso login` always uses the default browser, which is the wrong
+  one for some sessions.
+- The sign-in waits for the user to approve in the browser, so ask them to
+  run it rather than running it yourself, then check with
+  `aws sts get-caller-identity`.
+
 ## Sessions run in Emacs agent-shell
 
 The user usually runs agents inside Emacs with agent-shell, often several at
