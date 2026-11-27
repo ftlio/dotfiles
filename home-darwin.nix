@@ -183,6 +183,57 @@ let
     fi
   '';
 
+  # OPNsense REST API. A key is made in its web UI (System > Access > Users,
+  # the user's API keys), which downloads a file with `key=` and `secret=`
+  # lines. Both go in the Keychain under "opnsense-key" and "opnsense-secret",
+  # with the (non-secret) host name under "opnsense-host"; `opnsense-api`
+  # reads them at run time, so neither scripts nor agents see the secret.
+  opnsenseHostService = "opnsense-host";
+  opnsenseKeyService = "opnsense-key";
+  opnsenseSecretService = "opnsense-secret";
+
+  opnsense-set-key = pkgs.writeShellScriptBin "opnsense-set-key" ''
+    host=''${1:?usage: opnsense-set-key HOST APIKEY_FILE}
+    file=''${2:?usage: opnsense-set-key HOST APIKEY_FILE}
+    key=$(${pkgs.gnused}/bin/sed -n 's/^key=//p' "$file")
+    secret=$(${pkgs.gnused}/bin/sed -n 's/^secret=//p' "$file")
+    [ -n "$key" ] && [ -n "$secret" ] || { echo "opnsense-set-key: no key= and secret= lines in $file" >&2; exit 1; }
+    /usr/bin/security add-generic-password -U -a "$USER" -s ${opnsenseHostService} -w "$host"
+    /usr/bin/security add-generic-password -U -a "$USER" -s ${opnsenseKeyService} -w "$key"
+    /usr/bin/security add-generic-password -U -a "$USER" -s ${opnsenseSecretService} -w "$secret"
+    echo "Stored the key for $host. Delete $file now."
+  '';
+
+  # Usage: opnsense-api [--write] [METHOD] PATH [CURL-ARG...]
+  #   opnsense-api /dnsmasq/leases/search
+  #   opnsense-api --write POST /dnsmasq/service/reconfigure -d '{}'
+  # PATH is what follows /api/. Anything but GET needs --write, although many
+  # of OPNsense's read-only searches also accept GET.
+  opnsense-api = pkgs.writeShellScriptBin "opnsense-api" ''
+    write=
+    [ "$1" = --write ] && { write=1; shift; }
+    method=GET
+    case $1 in GET|POST|PUT|PATCH|DELETE) method=$1; shift ;; esac
+    path=''${1:?usage: opnsense-api [--write] [METHOD] PATH [CURL-ARG...]}
+    shift
+    if [ "$method" != GET ] && [ -z "$write" ]; then
+      echo "opnsense-api: $method may change OPNsense; pass --write if that is intended" >&2
+      exit 1
+    fi
+    if ! host=$(/usr/bin/security find-generic-password -a "$USER" -s ${opnsenseHostService} -w 2>/dev/null) \
+      || ! key=$(/usr/bin/security find-generic-password -a "$USER" -s ${opnsenseKeyService} -w 2>/dev/null) \
+      || ! secret=$(/usr/bin/security find-generic-password -a "$USER" -s ${opnsenseSecretService} -w 2>/dev/null); then
+      echo "opnsense-api: no key in Keychain; run opnsense-set-key first" >&2
+      exit 1
+    fi
+    # Keep the secret out of argv (process substitution shows as /dev/fd/N in ps).
+    auth() { printf 'Authorization: Basic %s' "$(printf '%s:%s' "$key" "$secret" | /usr/bin/base64 | tr -d '\n')"; }
+    # OPNsense answers 400 to a JSON content type with no body, as on a GET.
+    [ "$method" = GET ] || set -- -H "Content-Type: application/json" "$@"
+    exec ${pkgs.curl}/bin/curl -sS --fail-with-body -X "$method" -H @<(auth) \
+      "https://$host/api/''${path#/}" "$@"
+  '';
+
   # `aws sso login` opening its sign-in page in a chosen app, so one SSO
   # session can live in a different browser from the default. The app is
   # AWS_LOGIN_BROWSER if set, else the `login_browser` key of the session's
@@ -322,6 +373,8 @@ in
     foreman-set-token
     foreman-api
     foreman-login
+    opnsense-set-key
+    opnsense-api
     aws-sso-login
     playwright-secret-set
     playwright-secret-list
