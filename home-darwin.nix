@@ -234,6 +234,54 @@ let
       "https://$host/api/''${path#/}" "$@"
   '';
 
+  # Home Assistant's REST API. A long-lived access token (Profile → Security →
+  # Long-lived access tokens, as an admin) goes in the Keychain under
+  # "homeassistant-token", with the (non-secret) base URL under
+  # "homeassistant-url"; `ha-api` reads them at run time, so neither scripts
+  # nor agents see the token. With an admin's token, /api/hassio/... reaches
+  # the Supervisor (add-ons, backups, host).
+  haUrlService = "homeassistant-url";
+  haTokenService = "homeassistant-token";
+
+  ha-set-token = pkgs.writeShellScriptBin "ha-set-token" ''
+    url=''${1:?usage: ha-set-token BASE_URL   (e.g. https://homeassistant.example)}
+    read -rs -p "Home Assistant long-lived access token: " token
+    echo
+    token=''${token//[[:space:]]/}
+    [ -n "$token" ] || { echo "ha-set-token: no token given" >&2; exit 1; }
+    /usr/bin/security add-generic-password -U -a "$USER" -s ${haUrlService} -w "''${url%/}"
+    /usr/bin/security add-generic-password -U -a "$USER" -s ${haTokenService} -w "$token"
+    echo "Stored the token (''${#token} characters) for ''${url%/}."
+  '';
+
+  # Usage: ha-api [--write] [METHOD] PATH [CURL-ARG...]
+  #   ha-api /config
+  #   ha-api /hassio/addons
+  #   ha-api --write POST /services/light/turn_on -d '{"entity_id":"light.x"}'
+  # PATH is what follows /api/. Anything but GET needs --write.
+  ha-api = pkgs.writeShellScriptBin "ha-api" ''
+    write=
+    [ "$1" = --write ] && { write=1; shift; }
+    method=GET
+    case $1 in GET|POST|PUT|PATCH|DELETE) method=$1; shift ;; esac
+    path=''${1:?usage: ha-api [--write] [METHOD] PATH [CURL-ARG...]}
+    shift
+    if [ "$method" != GET ] && [ -z "$write" ]; then
+      echo "ha-api: $method may change Home Assistant; pass --write if that is intended" >&2
+      exit 1
+    fi
+    if ! url=$(/usr/bin/security find-generic-password -a "$USER" -s ${haUrlService} -w 2>/dev/null) \
+      || ! token=$(/usr/bin/security find-generic-password -a "$USER" -s ${haTokenService} -w 2>/dev/null); then
+      echo "ha-api: no token in Keychain; run ha-set-token first" >&2
+      exit 1
+    fi
+    # Keep the token out of argv (process substitution shows as /dev/fd/N in ps).
+    auth() { printf 'Authorization: Bearer %s' "$token"; }
+    [ "$method" = GET ] || set -- -H "Content-Type: application/json" "$@"
+    exec ${pkgs.curl}/bin/curl -sS --fail-with-body -X "$method" -H @<(auth) \
+      "$url/api/''${path#/}" "$@"
+  '';
+
   # `aws sso login` opening its sign-in page in a chosen app, so one SSO
   # session can live in a different browser from the default. The app is
   # AWS_LOGIN_BROWSER if set, else the `login_browser` key of the session's
@@ -375,6 +423,8 @@ in
     foreman-login
     opnsense-set-key
     opnsense-api
+    ha-set-token
+    ha-api
     aws-sso-login
     playwright-secret-set
     playwright-secret-list
