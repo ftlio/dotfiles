@@ -259,6 +259,18 @@ let
   #   ha-api /hassio/addons
   #   ha-api --write POST /services/light/turn_on -d '{"entity_id":"light.x"}'
   # PATH is what follows /api/. Anything but GET needs --write.
+  # One WebSocket command (scripts/ha-ws.py), for what the REST API can't
+  # reach, chiefly the Supervisor: add-ons and the host.
+  ha-ws = pkgs.writeShellScriptBin "ha-ws" ''
+    if ! url=$(/usr/bin/security find-generic-password -a "$USER" -s ${haUrlService} -w 2>/dev/null) \
+      || ! token=$(/usr/bin/security find-generic-password -a "$USER" -s ${haTokenService} -w 2>/dev/null); then
+      echo "ha-ws: no token in Keychain; run ha-set-token first" >&2
+      exit 1
+    fi
+    # The token goes in on stdin, not argv or the environment, where ps shows it.
+    printf '%s' "$token" | HA_URL=$url exec ${pkgs.python3.withPackages (ps: [ ps.websockets ])}/bin/python3 ${./scripts/ha-ws.py} "$@"
+  '';
+
   ha-api = pkgs.writeShellScriptBin "ha-api" ''
     write=
     [ "$1" = --write ] && { write=1; shift; }
@@ -425,6 +437,7 @@ in
     opnsense-api
     ha-set-token
     ha-api
+    ha-ws
     aws-sso-login
     playwright-secret-set
     playwright-secret-list
